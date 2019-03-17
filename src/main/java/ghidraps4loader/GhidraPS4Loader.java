@@ -49,13 +49,15 @@ import ghidra.app.util.bin.format.elf.ElfHeader;
 import ghidra.app.util.bin.format.elf.ElfException;
 
 public class GhidraPS4Loader extends BinaryLoader {
+	private String databasePath = "ps4database.xml";
+	
 	private Document parsePS4Database() throws ParserConfigurationException, IOException, SAXException {
 	    DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 	    //factory.setValidating(true);
 	    factory.setIgnoringElementContentWhitespace(true);
 	    
 	    DocumentBuilder builder = factory.newDocumentBuilder();
-	    File file = new File("ps4database.xml");
+	    File file = new File(databasePath);
 	    Document doc = builder.parse(file);
 	    
 	    return doc;
@@ -95,6 +97,12 @@ public class GhidraPS4Loader extends BinaryLoader {
 		try {
 			elfHeader = PS4ElfParser.getElfHeader(provider);
 		} catch (ElfException e) {
+			return loadSpecs;
+		}
+		
+		File dbfile = new File(databasePath);
+		boolean exists = dbfile.exists();
+		if(!exists) {
 			return loadSpecs;
 		}
 		
