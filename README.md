@@ -1,8 +1,10 @@
 ## Ghidra PS4 Loader by golden
 
 This is a simple module for Ghidra to support loading PlayStation 4 ELF files. 
+I will post a released extension when more work is done on this.
 
 #### Installation
+0. Build with gradle, find the zip file in `dist` folder
 1. Extract the zip file to `Ghidra/Extensions`
 2. Start Ghidra
 3. Drag and drop PlayStation 4 binary into Ghidra (such as a game eboot)
