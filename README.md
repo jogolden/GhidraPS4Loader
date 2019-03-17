@@ -14,15 +14,15 @@ I will post a released extension when more work is done on this.
 7. Profit.
 
 #### Common Issues
-~ If you are missing the `ps4database.xml` file, then the option to load a PlayStation 4 ELF will not show up.
-~ Make sure your ELF is decrypted.
-~ Make sure your ELF does not have the Sony header that is in encrypted ELF files.
+~ If you are missing the `ps4database.xml` file, then the option to load a PlayStation 4 ELF will not show up.  
+~ Make sure your ELF is decrypted.  
+~ Make sure your ELF does not have the Sony header that is in encrypted ELF files.  
 
 #### TODO
-~ I want to add a lot of features. Want to help? Please open an issue with an idea or submit a pull request!
-~ Use StructConverter and show Sony and ELF header structures
-~ Change region name from RAM to something else?
-~ Make it so that imports are valid code, so it doesn't mess with decompiler
+~ I want to add a lot of features. Want to help? Please open an issue with an idea or submit a pull request!  
+~ Use StructConverter and show Sony and ELF header structures  
+~ Change region name from RAM to something else?  
+~ Make it so that imports are valid code, so it doesn't mess with decompiler  
 
 #### Credits
 Major credits to xerpi for his Vita script, aerosoul94 for his dynlib project and database format, and Adubbz for his Switch loader. I was lazy to learn everything about Ghidra from scratch!
