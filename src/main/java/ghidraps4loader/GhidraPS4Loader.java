@@ -55,7 +55,7 @@ public class GhidraPS4Loader extends BinaryLoader {
 	    factory.setIgnoringElementContentWhitespace(true);
 	    
 	    DocumentBuilder builder = factory.newDocumentBuilder();
-	    File file = new File("/home/juan/Desktop/GhidraPS4Loader/ps4database.xml");
+	    File file = new File("ps4database.xml");
 	    Document doc = builder.parse(file);
 	    
 	    return doc;
