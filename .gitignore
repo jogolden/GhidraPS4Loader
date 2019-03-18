@@ -26,3 +26,4 @@ hs_err_pid*
 .antProperties.xml
 .project
 .classpath
+bin/help

@@ -17,6 +17,7 @@ package ghidraps4loader;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.*;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -26,6 +27,7 @@ import javax.xml.parsers.ParserConfigurationException;
 import org.w3c.dom.*;
 import org.xml.sax.SAXException;
 
+import generic.util.Path;
 import ghidra.app.plugin.assembler.sleigh.util.GhidraDBTransaction;
 import ghidra.app.util.Option;
 import ghidra.app.util.bin.ByteProvider;
@@ -49,7 +51,7 @@ import ghidra.app.util.bin.format.elf.ElfHeader;
 import ghidra.app.util.bin.format.elf.ElfException;
 
 public class GhidraPS4Loader extends BinaryLoader {
-	private String databasePath = "ps4database.xml";
+	private String databasePath = Paths.get((new Path(Path.GHIDRA_HOME)).getPathAsString(), "ps4database.xml").toString();
 	
 	private Document parsePS4Database() throws ParserConfigurationException, IOException, SAXException {
 	    DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
@@ -99,7 +101,7 @@ public class GhidraPS4Loader extends BinaryLoader {
 		} catch (ElfException e) {
 			return loadSpecs;
 		}
-		
+
 		File dbfile = new File(databasePath);
 		boolean exists = dbfile.exists();
 		if(!exists) {
