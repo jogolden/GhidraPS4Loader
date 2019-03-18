@@ -17,23 +17,23 @@ import ghidra.app.util.bin.format.elf.ElfException;
 public class PS4ElfParser {
 	// ELF Types
 	public static final long ET_SCE_EXEC = 0xFE00;
-    public static final long ET_SCE_REPLAY_EXEC = 0xFE01;
-    public static final long ET_SCE_RELEXEC = 0XFE04;
+	public static final long ET_SCE_REPLAY_EXEC = 0xFE01;
+	public static final long ET_SCE_RELEXEC = 0XFE04;
 	public static final long ET_SCE_STUBLIB = 0xFE0C;
-    public static final long ET_SCE_DYNEXEC = 0xFE10;
+	public static final long ET_SCE_DYNEXEC = 0xFE10;
 	public static final long ET_SCE_DYNAMIC = 0xFE18;
 	
 	// Program Segment Type
-    public static final long PT_SCE_RELA = 0x60000000;
+	public static final long PT_SCE_RELA = 0x60000000;
 	public static final long PT_SCE_DYNLIBDATA = 0x61000000;
 	public static final long PT_SCE_PROCPARAM = 0x61000001;
 	public static final long PT_SCE_MODULEPARAM = 0x61000002;
 	public static final long PT_SCE_RELRO = 0x61000010;
-    public static final long PT_SCE_COMMENT = 0X6FFFFF00;
-    public static final long PT_SCE_LIBVERSION = 0X6FFFFF01;
+	public static final long PT_SCE_COMMENT = 0X6FFFFF00;
+	public static final long PT_SCE_LIBVERSION = 0X6FFFFF01;
 	
 	// Dynamic Section Types
-    public static final long DT_SCE_IDTABENTSZ = 0x61000005;
+	public static final long DT_SCE_IDTABENTSZ = 0x61000005;
 	public static final long DT_SCE_FINGERPRINT = 0x61000007;
 	public static final long DT_SCE_ORIGINAL_FILENAME = 0x61000009;
 	public static final long DT_SCE_MODULE_INFO = 0x6100000D;
@@ -61,7 +61,7 @@ public class PS4ElfParser {
 	public static final long DT_SCE_SYMENT = 0x6100003B;
 	public static final long DT_SCE_HASHSZ = 0x6100003D;
 	public static final long DT_SCE_SYMTABSZ = 0x6100003F;
-    public static final long DT_SCE_HIOS = 0X6FFFF000;
+	public static final long DT_SCE_HIOS = 0X6FFFF000;
 	
 	public static class Elf64_Rela {
 		public long r_offset;    /* Location at which to apply the action */
@@ -145,7 +145,7 @@ public class PS4ElfParser {
 			// find symbol for relocation
 			br.setPointerIndex(symAddr + (Elf64_Sym.SIZE * (rela.r_info >> 32)));
 			Elf64_Sym sym = new Elf64_Sym(br);
-
+			
 			br.setPointerIndex(strtableAddr + sym.st_name);
 			String nid = br.readNextAsciiString().split("#")[0];
 			//System.out.println(nid);
