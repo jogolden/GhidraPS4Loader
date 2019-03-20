@@ -25,4 +25,5 @@ I will post a released extension when more work is done on this.
 ~ Make it so that imports are valid code, so it doesn't mess with decompiler  
 
 #### Credits
+Credits to Z80 and SocraticBliss for general development.  
 Major credits to xerpi for his Vita script, aerosoul94 for his dynlib project and database format, and Adubbz for his Switch loader. I was lazy to learn everything about Ghidra from scratch!
