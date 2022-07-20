@@ -106,13 +106,9 @@ public class PS4ElfParser {
 		Map<Long, String> results = new TreeMap<Long, String>();
 		long dynlibdataAddr = 0;
 
-		ElfDynamicTable dynTable = null;
-		for(ElfProgramHeader prog : elfHeader.getProgramHeaders()) {
-			if(prog.getTypeAsString().equals("PT_DYNAMIC")) {
-				dynTable = new ElfDynamicTable(br, elfHeader, prog.getOffset(), prog.getVirtualAddress());
-			} else if(prog.getType() == PT_SCE_DYNLIBDATA) {
-				dynlibdataAddr = prog.getOffset();
-			}
+		ElfDynamicTable dynTable = elfHeader.getDynamicTable();
+		for(ElfProgramHeader prog : elfHeader.getProgramHeaders((int)PT_SCE_DYNLIBDATA)) {
+			dynlibdataAddr = prog.getOffset();
 		}
 
 		long symAddr = dynlibdataAddr;
@@ -120,20 +116,21 @@ public class PS4ElfParser {
 		long strtableAddr = dynlibdataAddr;
 		long strtableSize = 0;
 		long number = 0;
-		for(ElfDynamic dyn : dynTable.getDynamics()) {
-			long tag = dyn.getTag();
-			if(tag == DT_SCE_JMPREL) {
-				relocAddr += dyn.getValue();
-			} else if(tag == DT_SCE_SYMTAB) {
-				symAddr += dyn.getValue();
-			} else if(tag == DT_SCE_STRTAB) {
-				strtableAddr += dyn.getValue();
-			} else if(tag == DT_SCE_STRSZ) {
-				strtableSize += dyn.getValue();
-			} else if(tag == DT_SCE_PLTRELSZ) {
-				number = dyn.getValue() / 24;
+		if (null != dynTable)
+			for(ElfDynamic dyn : dynTable.getDynamics()) {
+				long tag = dyn.getTag();
+				if(tag == DT_SCE_JMPREL) {
+					relocAddr += dyn.getValue();
+				} else if(tag == DT_SCE_SYMTAB) {
+					symAddr += dyn.getValue();
+				} else if(tag == DT_SCE_STRTAB) {
+					strtableAddr += dyn.getValue();
+				} else if(tag == DT_SCE_STRSZ) {
+					strtableSize += dyn.getValue();
+				} else if(tag == DT_SCE_PLTRELSZ) {
+					number = dyn.getValue() / 24;
+				}
 			}
-		}
 
 		// Parse through the relocation addresses and associate the symbol with each relocation
 		for(int i = 0; i < number; i++) {
