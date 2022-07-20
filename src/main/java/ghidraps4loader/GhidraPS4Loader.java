@@ -4,9 +4,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -29,10 +29,8 @@ import org.xml.sax.SAXException;
 
 import ghidra.framework.Application;
 import generic.util.Path;
-import ghidra.app.plugin.assembler.sleigh.util.GhidraDBTransaction;
 import ghidra.app.util.Option;
 import ghidra.app.util.bin.ByteProvider;
-import ghidra.app.util.importer.MemoryConflictHandler;
 import ghidra.app.util.importer.MessageLog;
 import ghidra.app.util.opinion.LoadSpec;
 import ghidra.app.util.opinion.BinaryLoader;
@@ -50,28 +48,29 @@ import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 import ghidra.app.util.bin.format.elf.ElfHeader;
 import ghidra.app.util.bin.format.elf.ElfException;
+import ghidra.util.Msg;
 
 public class GhidraPS4Loader extends BinaryLoader {
 	private String getDatabasePath() throws IOException {
 		String databasePath = Application.getModuleDataFile("ps4database.xml").toString();
 		return databasePath;
 	}
-	
+
 	private Document parsePS4Database() throws ParserConfigurationException, IOException, SAXException {
 	    DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 	    //factory.setValidating(true);
 	    factory.setIgnoringElementContentWhitespace(true);
-	    
+
 	    DocumentBuilder builder = factory.newDocumentBuilder();
 	    File file = new File(getDatabasePath());
 	    Document doc = builder.parse(file);
-	    
+
 	    return doc;
 	}
-	
+
 	private String getNameForNID(Document database, String nid) {
 		String result = "__import_" + nid;
-		
+
 		NodeList nidlist = database.getElementsByTagName("DynlibDatabase").item(0).getChildNodes();
 		for(int j = 0; j < nidlist.getLength(); j++) {
 			Node node = nidlist.item(j);
@@ -86,10 +85,10 @@ public class GhidraPS4Loader extends BinaryLoader {
 		    	}
 		    }
 		}
-		
+
 		return result;
 	}
-	
+
 	@Override
 	public String getName() {
 		return "PlayStation 4 ELF";
@@ -98,7 +97,7 @@ public class GhidraPS4Loader extends BinaryLoader {
 	@Override
 	public Collection<LoadSpec> findSupportedLoadSpecs(ByteProvider provider) throws IOException {
 		List<LoadSpec> loadSpecs = new ArrayList<>();
-		
+
 		ElfHeader elfHeader;
 		try {
 			elfHeader = PS4ElfParser.getElfHeader(provider);
@@ -111,15 +110,15 @@ public class GhidraPS4Loader extends BinaryLoader {
 		if(!exists) {
 			return loadSpecs;
 		}
-		
+
 		int type = elfHeader.e_type();
 		int machine = elfHeader.e_machine();
-		
+
 		// TODO: support all the different types
 		//if(type != PS4_ELF_TYPE || machine != PS4_MACHINE_TYPE) {
 		//	return loadSpecs;
 		//}
-		
+
 		loadSpecs.add(new LoadSpec(this, 0x400000, new LanguageCompilerSpecPair("x86:LE:64:default", "gcc"), true));
 
 		return loadSpecs;
@@ -136,24 +135,24 @@ public class GhidraPS4Loader extends BinaryLoader {
         Address baseAddress = importerLanguage.getAddressFactory().getDefaultAddressSpace().getAddress(0);
         List<Program> results = new ArrayList<Program>();
         boolean success = false;
-		
+
 		Program program = createProgram(provider, programName, baseAddress, getName(), importerLanguage, importerCompilerSpec, consumer);
-		
+
 		try {
-			success = this.loadInto(provider, loadSpec, options, log, program, monitor, MemoryConflictHandler.ALWAYS_OVERWRITE);
+			success = this.loadInto(provider, loadSpec, options, log, program, monitor);
 		} finally {
 			if(!success) {
 				program.release(consumer);
 			}
 		}
-		
+
         if (success) {
         	// Start a transaction on the program database
-        	GhidraDBTransaction trans = new GhidraDBTransaction(program, "PlayStation 4 Loader");
-        	
+        	int transactionID = program.startTransaction("PlayStation 4 Loader");
+
         	// Function manager
         	FunctionManager funcManager = program.getFunctionManager();
-        	
+
         	// ELF Header
     		ElfHeader elfHeader;
     		try {
@@ -161,10 +160,10 @@ public class GhidraPS4Loader extends BinaryLoader {
     		} catch (ElfException e) {
     			throw new IOException("Failed to parse ELF header!");
     		}
-    		
+
     		// TODO: fix this, make it dynamic
     		long endOfHeader = 0x4000;
-    		
+
         	// Load all the imports from the XML file
     		Document ps4database;
         	try {
@@ -172,7 +171,7 @@ public class GhidraPS4Loader extends BinaryLoader {
 			} catch (Exception e) {
 				throw new IOException("Failed to load 'ps4database.xml'!");
 			}
-        	
+
         	// Parse all the imports
         	Map<Long, String> imports = PS4ElfParser.getSonyElfImports(provider, elfHeader);
         	if(imports.size() > 0) {
@@ -180,7 +179,7 @@ public class GhidraPS4Loader extends BinaryLoader {
 	        	for(Map.Entry<Long, String> importEntry : imports.entrySet()) {
 	        		Long address = endOfHeader + importEntry.getKey();
 	        		String nid = importEntry.getValue();
-	        		
+
 	        		Address addr = importerLanguage.getAddressFactory().getDefaultAddressSpace().getAddress(address);
 
 	        		// Label the import
@@ -190,28 +189,27 @@ public class GhidraPS4Loader extends BinaryLoader {
         				 funcManager.createFunction(name, addr, addrSet, SourceType.IMPORTED);
 					} catch (Exception ex) {
 						ex.printStackTrace();
-						System.out.println("error: could not created imported function '" + name + "'!");
+						Msg.error(this, "error: could not created imported function '" + name + "'!");
 					}
 	        	}
         	}
-        	
+
         	// the entry point
         	long entryAddress = endOfHeader + elfHeader.e_entry();
         	Address entryAddr = importerLanguage.getAddressFactory().getDefaultAddressSpace().getAddress(entryAddress);
         	AddressSet addrSet = new AddressSet(entryAddr);
         	try {
-				 funcManager.createFunction("entrypoint", entryAddr, addrSet, SourceType.IMPORTED);
+				funcManager.createFunction("entrypoint", entryAddr, addrSet, SourceType.IMPORTED);
 			} catch (Exception ex) {
-				System.out.println("error: could not set up entrypoint function!");
+				Msg.error(this, "error: could not set up entrypoint function!");
 			}
-        	
-        	trans.commit();
-        	trans.close();
-        	
+
+        	program.endTransaction(transactionID, true);
+
         	// Add the program to the results
         	results.add(program);
         }
-		
+
 		return results;
 	}
 
@@ -227,11 +225,11 @@ public class GhidraPS4Loader extends BinaryLoader {
 	}
 
 	@Override
-	public String validateOptions(ByteProvider provider, LoadSpec loadSpec, List<Option> options) {
+	public String validateOptions(ByteProvider provider, LoadSpec loadSpec, List<Option> options, Program program) {
 
 		// TODO: If this loader has custom options, validate them here.  Not all options require
 		// validation.
 
-		return super.validateOptions(provider, loadSpec, options);
+		return super.validateOptions(provider, loadSpec, options, program);
 	}
 }

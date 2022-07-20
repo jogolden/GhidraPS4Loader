@@ -4,15 +4,14 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.TreeMap;
 
-import generic.continues.RethrowContinuesFactory;
 import ghidra.app.util.bin.BinaryReader;
 import ghidra.app.util.bin.ByteProvider;
 import ghidra.app.util.bin.format.elf.*;
 import ghidra.program.model.address.Address;
-import ghidra.app.util.bin.format.FactoryBundledWithBinaryReader;
 import ghidra.app.util.bin.format.elf.ElfDynamic;
 import ghidra.app.util.bin.format.elf.ElfDynamicTable;
 import ghidra.app.util.bin.format.elf.ElfException;
+import ghidra.util.Msg;
 
 public class PS4ElfParser {
 	// ELF Types
@@ -22,7 +21,7 @@ public class PS4ElfParser {
 	public static final long ET_SCE_STUBLIB = 0xFE0C;
 	public static final long ET_SCE_DYNEXEC = 0xFE10;
 	public static final long ET_SCE_DYNAMIC = 0xFE18;
-	
+
 	// Program Segment Type
 	public static final long PT_SCE_RELA = 0x60000000;
 	public static final long PT_SCE_DYNLIBDATA = 0x61000000;
@@ -31,7 +30,7 @@ public class PS4ElfParser {
 	public static final long PT_SCE_RELRO = 0x61000010;
 	public static final long PT_SCE_COMMENT = 0X6FFFFF00;
 	public static final long PT_SCE_LIBVERSION = 0X6FFFFF01;
-	
+
 	// Dynamic Section Types
 	public static final long DT_SCE_IDTABENTSZ = 0x61000005;
 	public static final long DT_SCE_FINGERPRINT = 0x61000007;
@@ -62,20 +61,20 @@ public class PS4ElfParser {
 	public static final long DT_SCE_HASHSZ = 0x6100003D;
 	public static final long DT_SCE_SYMTABSZ = 0x6100003F;
 	public static final long DT_SCE_HIOS = 0X6FFFF000;
-	
+
 	public static class Elf64_Rela {
 		public long r_offset;    /* Location at which to apply the action */
 		public long r_info;      /* index and type of relocation */
 		public long r_addend;    /* Constant addend used to compute value */
 		public static final int SIZE = 24;
-		
+
 		public Elf64_Rela(BinaryReader br) throws IOException {
 			r_offset = br.readNextLong();
 			r_info = br.readNextLong();
 			r_addend = br.readNextLong();
 		}
 	}
-	
+
 	public static class Elf64_Sym {
 		public int st_name;        /* Symbol name, index in string tbl */
 		public byte st_info;       /* Type and binding attributes */
@@ -84,7 +83,7 @@ public class PS4ElfParser {
 		public long st_value;      /* Value of the symbol */
 		public long st_size;       /* Associated symbol size */
 		public static final int SIZE = 24;
-		
+
 		public Elf64_Sym(BinaryReader br) throws IOException {
 			st_name = br.readNextInt();
 			st_info = br.readNextByte();
@@ -94,67 +93,63 @@ public class PS4ElfParser {
 			st_size = br.readNextLong();
 		}
 	}
-	
+
 	public static ElfHeader getElfHeader(ByteProvider provider) throws ElfException, IOException {
-		ElfHeader elfHeader = ElfHeader.createElfHeader(RethrowContinuesFactory.INSTANCE, provider);
+		ElfHeader elfHeader = new ElfHeader(provider, msg -> Msg.error(PS4ElfParser.class, msg));
 		elfHeader.parse();
 		return elfHeader;
 	}
-	
+
 	public static Map<Long, String> getSonyElfImports(ByteProvider provider, ElfHeader elfHeader) throws IOException {
 		// Parse the specific Sony ELF region and build the map
 		BinaryReader br = new BinaryReader(provider, true);
-		FactoryBundledWithBinaryReader fbrdr = new FactoryBundledWithBinaryReader(RethrowContinuesFactory.INSTANCE, provider, true);
 		Map<Long, String> results = new TreeMap<Long, String>();
 		long dynlibdataAddr = 0;
-		
-		ElfDynamicTable dynTable = null;
-		for(ElfProgramHeader prog : elfHeader.getProgramHeaders()) {
-			if(prog.getTypeAsString().equals("PT_DYNAMIC")) {
-				dynTable = ElfDynamicTable.createDynamicTable(fbrdr, elfHeader, prog.getOffset(), prog.getVirtualAddress());
-			} else if(prog.getType() == PT_SCE_DYNLIBDATA) {
-				dynlibdataAddr = prog.getOffset();
-			} 
+
+		ElfDynamicTable dynTable = elfHeader.getDynamicTable();
+		for(ElfProgramHeader prog : elfHeader.getProgramHeaders((int)PT_SCE_DYNLIBDATA)) {
+			dynlibdataAddr = prog.getOffset();
 		}
-		
+
 		long symAddr = dynlibdataAddr;
 		long relocAddr = dynlibdataAddr;
 		long strtableAddr = dynlibdataAddr;
 		long strtableSize = 0;
 		long number = 0;
-		for(ElfDynamic dyn : dynTable.getDynamics()) {
-			long tag = dyn.getTag();
-			if(tag == DT_SCE_JMPREL) {
-				relocAddr += dyn.getValue();
-			} else if(tag == DT_SCE_SYMTAB) {
-				symAddr += dyn.getValue();
-			} else if(tag == DT_SCE_STRTAB) {
-				strtableAddr += dyn.getValue();
-			} else if(tag == DT_SCE_STRSZ) {
-				strtableSize += dyn.getValue();
-			} else if(tag == DT_SCE_PLTRELSZ) {
-				number = dyn.getValue() / 24;
+		if (null != dynTable)
+			for(ElfDynamic dyn : dynTable.getDynamics()) {
+				long tag = dyn.getTag();
+				if(tag == DT_SCE_JMPREL) {
+					relocAddr += dyn.getValue();
+				} else if(tag == DT_SCE_SYMTAB) {
+					symAddr += dyn.getValue();
+				} else if(tag == DT_SCE_STRTAB) {
+					strtableAddr += dyn.getValue();
+				} else if(tag == DT_SCE_STRSZ) {
+					strtableSize += dyn.getValue();
+				} else if(tag == DT_SCE_PLTRELSZ) {
+					number = dyn.getValue() / 24;
+				}
 			}
-		}
-		
+
 		// Parse through the relocation addresses and associate the symbol with each relocation
 		for(int i = 0; i < number; i++) {
 			br.setPointerIndex(relocAddr);
 			Elf64_Rela rela = new Elf64_Rela(br);
-			
+
 			// find symbol for relocation
 			br.setPointerIndex(symAddr + (Elf64_Sym.SIZE * (rela.r_info >> 32)));
 			Elf64_Sym sym = new Elf64_Sym(br);
-			
+
 			br.setPointerIndex(strtableAddr + sym.st_name);
 			String nid = br.readNextAsciiString().split("#")[0];
 			//System.out.println(nid);
-			
+
 			results.put(rela.r_offset, nid);
-			
+
 			relocAddr += Elf64_Rela.SIZE;
 		}
-		
+
 		return results;
 	}
 }
